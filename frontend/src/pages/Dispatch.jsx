@@ -112,7 +112,7 @@ export default function Dispatch() {
 
   const dispatchItems = currentDispatch?.items || []
   const totalItems = dispatchItems.length
-  const totalWeight = dispatchItems.reduce((sum, item) => sum + (Number(item.net_weight) || 0), 0)
+  const totalWeight = dispatchItems.reduce((sum, item) => sum + (Number(item.product?.net_weight) || Number(item.weight) || 0), 0)
 
   return (
     <div>
@@ -206,10 +206,10 @@ export default function Dispatch() {
                   {dispatchItems.map((item, i) => (
                     <tr key={item.id || item._id || i}>
                       <td>{i + 1}</td>
-                      <td><strong>{item.product_number || '-'}</strong></td>
-                      <td>{item.quality || '-'}</td>
-                      <td>{item.gsm || '-'}</td>
-                      <td>{item.net_weight || '-'}</td>
+                      <td><strong>{item.product?.product_number || '-'}</strong></td>
+                      <td>{item.product?.quality || '-'}</td>
+                      <td>{item.product?.gsm || '-'}</td>
+                      <td>{item.product?.net_weight || item.weight || '-'}</td>
                       <td><button className="btn btn-danger btn-sm" onClick={() => handleRemoveItem(item.id || item._id || item.product_id)}>Remove</button></td>
                     </tr>
                   ))}

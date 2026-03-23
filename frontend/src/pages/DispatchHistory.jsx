@@ -145,10 +145,10 @@ export default function DispatchHistory() {
                           {selectedDispatch.items.map((item, i) => (
                             <tr key={i}>
                               <td>{i + 1}</td>
-                              <td>{item.product_number || '-'}</td>
-                              <td>{item.quality || '-'}</td>
-                              <td>{item.gsm || '-'}</td>
-                              <td>{item.net_weight || '-'}</td>
+                              <td>{item.product?.product_number || '-'}</td>
+                              <td>{item.product?.quality || '-'}</td>
+                              <td>{item.product?.gsm || '-'}</td>
+                              <td>{item.product?.net_weight || item.weight || '-'}</td>
                             </tr>
                           ))}
                         </tbody>

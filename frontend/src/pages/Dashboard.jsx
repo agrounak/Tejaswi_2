@@ -73,7 +73,7 @@ export default function Dashboard() {
   }
 
   const shiftData = analytics?.production_by_shift
-    ? Object.entries(analytics.production_by_shift).map(([k, v]) => ({ label: `Shift ${k}`, value: v }))
+    ? analytics.production_by_shift.map((d) => ({ label: `Shift ${d.shift}`, value: d.count || 0 }))
     : []
 
   const trendData = analytics?.production_trend
@@ -84,7 +84,7 @@ export default function Dashboard() {
     : []
 
   const inventoryData = analytics?.inventory_by_type
-    ? Object.entries(analytics.inventory_by_type).map(([k, v]) => ({ label: k, value: v }))
+    ? analytics.inventory_by_type.map((d) => ({ label: d.product_type || 'Unknown', value: d.count || 0 }))
     : []
 
   return (

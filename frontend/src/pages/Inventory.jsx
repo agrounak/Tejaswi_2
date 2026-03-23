@@ -28,15 +28,15 @@ export default function Inventory() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const params = { page, limit: 25 }
+      const params = { page, per_page: 25 }
       Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v })
       const [stockRes, sumRes] = await Promise.all([
         API.inventory.getStock(params),
         API.inventory.getSummary(),
       ])
       const stockData = stockRes.data
-      setStock(stockData?.stock || stockData?.items || stockData || [])
-      setTotalPages(stockData?.total_pages || stockData?.totalPages || 1)
+      setStock(stockData?.products || stockData?.stock || stockData?.items || stockData || [])
+      setTotalPages(stockData?.pages || stockData?.total_pages || stockData?.totalPages || 1)
       setSummary(sumRes.data)
       setError('')
     } catch {

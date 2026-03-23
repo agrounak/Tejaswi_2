@@ -32,7 +32,7 @@ export default function AdminConfig() {
     if (!newValue.trim()) return
     setAddLoading(true); setError('')
     try {
-      await API.config.create({ type: activeTab, value: newValue.trim() })
+      await API.config.create({ config_type: activeTab, value: newValue.trim() })
       setNewValue(''); setSuccess(`Added "${newValue.trim()}" to ${activeTab}.`); loadAll()
     } catch (err) { setError(err.response?.data?.error || 'Failed to add config value.') }
     finally { setAddLoading(false) }
