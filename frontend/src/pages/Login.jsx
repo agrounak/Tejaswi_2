@@ -1,34 +1,32 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext.jsx'
 
 export default function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password');
-      return;
+      setError('Please enter both username and password')
+      return
     }
-    setLoading(true);
-    setError('');
+    setLoading(true)
+    setError('')
     try {
-      await login(username, password);
-      navigate('/');
+      await login(username, password)
+      navigate('/')
     } catch (err) {
-      setError(
-        err.response?.data?.error || 'Login failed. Please try again.'
-      );
+      setError(err.response?.data?.error || 'Login failed. Please try again.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="login-page">
@@ -64,5 +62,5 @@ export default function Login() {
         </form>
       </div>
     </div>
-  );
+  )
 }

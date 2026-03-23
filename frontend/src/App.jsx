@@ -1,44 +1,44 @@
-import React from 'react';
-import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import StickerGenerator from './pages/StickerGenerator';
-import Inventory from './pages/Inventory';
-import Dispatch from './pages/Dispatch';
-import DispatchHistory from './pages/DispatchHistory';
-import Orders from './pages/Orders';
-import AdminConfig from './pages/AdminConfig';
-import RegisterUser from './pages/RegisterUser';
+import React from 'react'
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
+import { useAuth } from './contexts/AuthContext.jsx'
+import Login from './pages/Login.jsx'
+import Dashboard from './pages/Dashboard.jsx'
+import StickerGenerator from './pages/StickerGenerator.jsx'
+import Inventory from './pages/Inventory.jsx'
+import Dispatch from './pages/Dispatch.jsx'
+import DispatchHistory from './pages/DispatchHistory.jsx'
+import Orders from './pages/Orders.jsx'
+import AdminConfig from './pages/AdminConfig.jsx'
+import RegisterUser from './pages/RegisterUser.jsx'
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return children;
+  const { isAuthenticated } = useAuth()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  return children
 }
 
 function Sidebar() {
-  const { user, logout } = useAuth();
-  const location = useLocation();
-  const role = user?.role || '';
+  const { user, logout } = useAuth()
+  const location = useLocation()
+  const role = user?.role || ''
 
-  const navItems = [];
-  navItems.push({ path: '/dashboard', label: 'Dashboard', icon: '\u2302' });
+  const navItems = []
+  navItems.push({ path: '/dashboard', label: 'Dashboard', icon: '\u2302' })
 
   if (role === 'Admin' || role === 'Sticker User') {
-    navItems.push({ path: '/sticker', label: 'Sticker Generator', icon: '\u2399' });
+    navItems.push({ path: '/sticker', label: 'Sticker Generator', icon: '\u2399' })
   }
   if (role === 'Admin') {
-    navItems.push({ path: '/inventory', label: 'Inventory', icon: '\u2692' });
+    navItems.push({ path: '/inventory', label: 'Inventory', icon: '\u2692' })
   }
   if (role === 'Admin' || role === 'Dispatch User') {
-    navItems.push({ path: '/dispatch', label: 'Dispatch', icon: '\u2708' });
-    navItems.push({ path: '/dispatch-history', label: 'Dispatch History', icon: '\u2637' });
+    navItems.push({ path: '/dispatch', label: 'Dispatch', icon: '\u2708' })
+    navItems.push({ path: '/dispatch-history', label: 'Dispatch History', icon: '\u2637' })
   }
   if (role === 'Admin') {
-    navItems.push({ path: '/orders', label: 'Orders', icon: '\u2263' });
-    navItems.push({ path: '/config', label: 'Configuration', icon: '\u2699' });
-    navItems.push({ path: '/users', label: 'User Management', icon: '\u263A' });
+    navItems.push({ path: '/orders', label: 'Orders', icon: '\u2263' })
+    navItems.push({ path: '/config', label: 'Configuration', icon: '\u2699' })
+    navItems.push({ path: '/users', label: 'User Management', icon: '\u263A' })
   }
 
   return (
@@ -69,11 +69,11 @@ function Sidebar() {
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth()
 
   if (!isAuthenticated) {
     return (
@@ -81,7 +81,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    );
+    )
   }
 
   return (
@@ -103,7 +103,7 @@ function App() {
         </Routes>
       </main>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

@@ -1,70 +1,58 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import API from '../api';
+import React, { useState, useEffect, useCallback } from 'react'
+import API from '../api'
 
-const emptyItem = { product_type: '', gsm: '', colour: '', width: '', quantity_kg: '' };
+const emptyItem = { product_type: '', gsm: '', colour: '', width: '', quantity_kg: '' }
 
 export default function Orders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [formLoading, setFormLoading] = useState(false);
-
-  // Create form
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [formLoading, setFormLoading] = useState(false)
   const [form, setForm] = useState({
     client_name: '', client_phone: '', client_address: '',
     order_date: new Date().toISOString().split('T')[0],
     required_date: '', notes: '',
-  });
-  const [items, setItems] = useState([{ ...emptyItem }]);
+  })
+  const [items, setItems] = useState([{ ...emptyItem }])
 
   const loadOrders = useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const res = await API.orders.list();
-      setOrders(res.data?.orders || res.data || []);
-      setError('');
-    } catch {
-      setError('Failed to load orders.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      const res = await API.orders.list()
+      setOrders(res.data?.orders || res.data || [])
+      setError('')
+    } catch { setError('Failed to load orders.') }
+    finally { setLoading(false) }
+  }, [])
 
-  useEffect(() => { loadOrders(); }, [loadOrders]);
+  useEffect(() => { loadOrders() }, [loadOrders])
 
   const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
 
   const handleItemChange = (index, e) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
     setItems((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [name]: value };
-      return updated;
-    });
-  };
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [name]: value }
+      return updated
+    })
+  }
 
-  const addItemRow = () => setItems((prev) => [...prev, { ...emptyItem }]);
-  const removeItemRow = (index) => setItems((prev) => prev.filter((_, i) => i !== index));
+  const addItemRow = () => setItems((prev) => [...prev, { ...emptyItem }])
+  const removeItemRow = (index) => setItems((prev) => prev.filter((_, i) => i !== index))
 
   const handleCreateOrder = async (e) => {
-    e.preventDefault();
-    if (!form.client_name.trim()) {
-      setError('Client name is required.');
-      return;
-    }
-    const validItems = items.filter((it) => it.product_type || it.gsm || it.quantity_kg);
-    if (validItems.length === 0) {
-      setError('Add at least one item.');
-      return;
-    }
-    setFormLoading(true);
-    setError('');
+    e.preventDefault()
+    if (!form.client_name.trim()) { setError('Client name is required.'); return }
+    const validItems = items.filter((it) => it.product_type || it.gsm || it.quantity_kg)
+    if (validItems.length === 0) { setError('Add at least one item.'); return }
+    setFormLoading(true); setError('')
     try {
       await API.orders.create({
         ...form,
@@ -74,48 +62,36 @@ export default function Orders() {
           width: it.width ? Number(it.width) : undefined,
           quantity_kg: it.quantity_kg ? Number(it.quantity_kg) : undefined,
         })),
-      });
-      setSuccess('Order created successfully.');
-      setShowForm(false);
-      setForm({ client_name: '', client_phone: '', client_address: '', order_date: new Date().toISOString().split('T')[0], required_date: '', notes: '' });
-      setItems([{ ...emptyItem }]);
-      loadOrders();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create order.');
-    } finally {
-      setFormLoading(false);
-    }
-  };
+      })
+      setSuccess('Order created successfully.')
+      setShowForm(false)
+      setForm({ client_name: '', client_phone: '', client_address: '', order_date: new Date().toISOString().split('T')[0], required_date: '', notes: '' })
+      setItems([{ ...emptyItem }])
+      loadOrders()
+    } catch (err) { setError(err.response?.data?.error || 'Failed to create order.') }
+    finally { setFormLoading(false) }
+  }
 
   const handleAllocate = async (order) => {
     try {
-      const id = order.id || order._id;
-      await API.orders.allocate(id);
-      setSuccess('Order allocated successfully.');
-      loadOrders();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to allocate order.');
-    }
-  };
+      await API.orders.allocate(order.id || order._id)
+      setSuccess('Order allocated successfully.')
+      loadOrders()
+    } catch (err) { setError(err.response?.data?.error || 'Failed to allocate order.') }
+  }
 
   const viewOrder = async (order) => {
     try {
-      const id = order.id || order._id;
-      const res = await API.orders.get(id);
-      setSelectedOrder(res.data?.order || res.data);
-    } catch {
-      setError('Failed to load order details.');
-    }
-  };
+      const res = await API.orders.get(order.id || order._id)
+      setSelectedOrder(res.data?.order || res.data)
+    } catch { setError('Failed to load order details.') }
+  }
 
   return (
     <div>
       <div className="page-header">
         <div className="flex-between">
-          <div>
-            <h1>Orders</h1>
-            <p>Manage client orders</p>
-          </div>
+          <div><h1>Orders</h1><p>Manage client orders</p></div>
           <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancel' : '+ New Order'}
           </button>
@@ -130,45 +106,17 @@ export default function Orders() {
           <div className="card-header"><h3>Create New Order</h3></div>
           <form onSubmit={handleCreateOrder}>
             <div className="form-grid">
-              <div className="form-group">
-                <label>Client Name *</label>
-                <input type="text" name="client_name" value={form.client_name} onChange={handleFormChange} placeholder="Client name" />
-              </div>
-              <div className="form-group">
-                <label>Client Phone</label>
-                <input type="text" name="client_phone" value={form.client_phone} onChange={handleFormChange} placeholder="Phone" />
-              </div>
-              <div className="form-group">
-                <label>Client Address</label>
-                <input type="text" name="client_address" value={form.client_address} onChange={handleFormChange} placeholder="Address" />
-              </div>
-              <div className="form-group">
-                <label>Order Date</label>
-                <input type="date" name="order_date" value={form.order_date} onChange={handleFormChange} />
-              </div>
-              <div className="form-group">
-                <label>Required Date</label>
-                <input type="date" name="required_date" value={form.required_date} onChange={handleFormChange} />
-              </div>
-              <div className="form-group">
-                <label>Notes</label>
-                <textarea name="notes" value={form.notes} onChange={handleFormChange} placeholder="Additional notes" rows="2" />
-              </div>
+              <div className="form-group"><label>Client Name *</label><input type="text" name="client_name" value={form.client_name} onChange={handleFormChange} placeholder="Client name" /></div>
+              <div className="form-group"><label>Client Phone</label><input type="text" name="client_phone" value={form.client_phone} onChange={handleFormChange} placeholder="Phone" /></div>
+              <div className="form-group"><label>Client Address</label><input type="text" name="client_address" value={form.client_address} onChange={handleFormChange} placeholder="Address" /></div>
+              <div className="form-group"><label>Order Date</label><input type="date" name="order_date" value={form.order_date} onChange={handleFormChange} /></div>
+              <div className="form-group"><label>Required Date</label><input type="date" name="required_date" value={form.required_date} onChange={handleFormChange} /></div>
+              <div className="form-group"><label>Notes</label><textarea name="notes" value={form.notes} onChange={handleFormChange} placeholder="Additional notes" rows="2" /></div>
             </div>
-
             <h4 style={{ margin: '20px 0 10px' }}>Order Items</h4>
             <div className="table-container">
               <table>
-                <thead>
-                  <tr>
-                    <th>Product Type</th>
-                    <th>GSM</th>
-                    <th>Colour</th>
-                    <th>Width</th>
-                    <th>Qty (kg)</th>
-                    <th></th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Product Type</th><th>GSM</th><th>Colour</th><th>Width</th><th>Qty (kg)</th><th></th></tr></thead>
                 <tbody>
                   {items.map((item, i) => (
                     <tr key={i}>
@@ -177,11 +125,7 @@ export default function Orders() {
                       <td><input type="text" name="colour" value={item.colour} onChange={(e) => handleItemChange(i, e)} placeholder="Colour" style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px' }} /></td>
                       <td><input type="number" name="width" value={item.width} onChange={(e) => handleItemChange(i, e)} placeholder="Width" step="0.01" style={{ width: '80px', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px' }} /></td>
                       <td><input type="number" name="quantity_kg" value={item.quantity_kg} onChange={(e) => handleItemChange(i, e)} placeholder="Kg" step="0.01" style={{ width: '80px', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px' }} /></td>
-                      <td>
-                        {items.length > 1 && (
-                          <button type="button" className="btn btn-danger btn-sm" onClick={() => removeItemRow(i)}>x</button>
-                        )}
-                      </td>
+                      <td>{items.length > 1 && (<button type="button" className="btn btn-danger btn-sm" onClick={() => removeItemRow(i)}>x</button>)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -190,11 +134,8 @@ export default function Orders() {
             <div style={{ marginTop: '8px' }}>
               <button type="button" className="btn btn-outline btn-sm" onClick={addItemRow}>+ Add Item</button>
             </div>
-
             <div style={{ marginTop: '20px' }} className="btn-group">
-              <button type="submit" className="btn btn-primary" disabled={formLoading}>
-                {formLoading ? 'Creating...' : 'Create Order'}
-              </button>
+              <button type="submit" className="btn btn-primary" disabled={formLoading}>{formLoading ? 'Creating...' : 'Create Order'}</button>
               <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
             </div>
           </form>
@@ -210,16 +151,7 @@ export default function Orders() {
         ) : (
           <div className="table-container">
             <table>
-              <thead>
-                <tr>
-                  <th>Order #</th>
-                  <th>Client</th>
-                  <th>Date</th>
-                  <th>Required Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Order #</th><th>Client</th><th>Date</th><th>Required Date</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
                 {orders.map((o, i) => (
                   <tr key={o.id || o._id || i}>
@@ -233,9 +165,7 @@ export default function Orders() {
                         o.status === 'Allocated' ? 'badge-blue' :
                         o.status === 'Pending' ? 'badge-yellow' :
                         o.status === 'Cancelled' ? 'badge-red' : 'badge-gray'
-                      }`}>
-                        {o.status || 'N/A'}
-                      </span>
+                      }`}>{o.status || 'N/A'}</span>
                     </td>
                     <td>
                       <div className="btn-group">
@@ -253,7 +183,6 @@ export default function Orders() {
         )}
       </div>
 
-      {/* Order Detail Modal */}
       {selectedOrder && (
         <div className="modal-overlay" onClick={() => setSelectedOrder(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -275,15 +204,7 @@ export default function Orders() {
               {selectedOrder.items && selectedOrder.items.length > 0 ? (
                 <div className="table-container">
                   <table>
-                    <thead>
-                      <tr>
-                        <th>Type</th>
-                        <th>GSM</th>
-                        <th>Colour</th>
-                        <th>Width</th>
-                        <th>Qty (kg)</th>
-                      </tr>
-                    </thead>
+                    <thead><tr><th>Type</th><th>GSM</th><th>Colour</th><th>Width</th><th>Qty (kg)</th></tr></thead>
                     <tbody>
                       {selectedOrder.items.map((it, i) => (
                         <tr key={i}>
@@ -297,9 +218,7 @@ export default function Orders() {
                     </tbody>
                   </table>
                 </div>
-              ) : (
-                <p>No items</p>
-              )}
+              ) : (<p>No items</p>)}
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setSelectedOrder(null)}>Close</button>
@@ -308,5 +227,5 @@ export default function Orders() {
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -1,82 +1,82 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import API from '../api';
+import React, { useState, useEffect, useCallback } from 'react'
+import API from '../api'
 
 export default function Inventory() {
-  const [stock, setStock] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filters, setFilters] = useState({ quality: '', colour: '', location: '', product_type: '' });
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [configs, setConfigs] = useState({ quality: [], colour: [], product_type: [], location: [] });
+  const [stock, setStock] = useState([])
+  const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [filters, setFilters] = useState({ quality: '', colour: '', location: '', product_type: '' })
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [configs, setConfigs] = useState({ quality: [], colour: [], product_type: [], location: [] })
 
   const loadConfigs = useCallback(async () => {
     try {
-      const types = ['quality', 'colour', 'product_type', 'location'];
-      const results = await Promise.all(types.map((t) => API.config.list(t)));
-      const cfg = {};
+      const types = ['quality', 'colour', 'product_type', 'location']
+      const results = await Promise.all(types.map((t) => API.config.list(t)))
+      const cfg = {}
       types.forEach((t, i) => {
-        cfg[t] = results[i].data?.configs || results[i].data || [];
-      });
-      setConfigs(cfg);
+        cfg[t] = results[i].data?.configs || results[i].data || []
+      })
+      setConfigs(cfg)
     } catch {
       // ignore
     }
-  }, []);
+  }, [])
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const params = { page, limit: 25 };
-      Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v; });
+      const params = { page, limit: 25 }
+      Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v })
       const [stockRes, sumRes] = await Promise.all([
         API.inventory.getStock(params),
         API.inventory.getSummary(),
-      ]);
-      const stockData = stockRes.data;
-      setStock(stockData?.stock || stockData?.items || stockData || []);
-      setTotalPages(stockData?.total_pages || stockData?.totalPages || 1);
-      setSummary(sumRes.data);
-      setError('');
-    } catch (err) {
-      setError('Failed to load inventory data.');
+      ])
+      const stockData = stockRes.data
+      setStock(stockData?.stock || stockData?.items || stockData || [])
+      setTotalPages(stockData?.total_pages || stockData?.totalPages || 1)
+      setSummary(sumRes.data)
+      setError('')
+    } catch {
+      setError('Failed to load inventory data.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [page, filters]);
+  }, [page, filters])
 
-  useEffect(() => { loadConfigs(); }, [loadConfigs]);
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadConfigs() }, [loadConfigs])
+  useEffect(() => { loadData() }, [loadData])
 
   const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
-    setPage(1);
-  };
+    const { name, value } = e.target
+    setFilters((prev) => ({ ...prev, [name]: value }))
+    setPage(1)
+  }
 
   const handleExportCSV = async () => {
     try {
-      const params = {};
-      Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v; });
-      const res = await API.inventory.exportCSV(params);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'inventory_export.csv';
-      link.click();
-      window.URL.revokeObjectURL(url);
+      const params = {}
+      Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v })
+      const res = await API.inventory.exportCSV(params)
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'inventory_export.csv'
+      link.click()
+      window.URL.revokeObjectURL(url)
     } catch {
-      setError('Failed to export CSV.');
+      setError('Failed to export CSV.')
     }
-  };
+  }
 
   const configValues = (type) => {
-    const list = configs[type] || [];
-    return list.map((c) => (typeof c === 'string' ? c : c.value || c.name || ''));
-  };
+    const list = configs[type] || []
+    return list.map((c) => (typeof c === 'string' ? c : c.value || c.name || ''))
+  }
 
-  const typeBreakdown = summary?.by_type || summary?.breakdown || {};
+  const typeBreakdown = summary?.by_type || summary?.breakdown || {}
 
   return (
     <div>
@@ -196,5 +196,5 @@ export default function Inventory() {
         )}
       </div>
     </div>
-  );
+  )
 }

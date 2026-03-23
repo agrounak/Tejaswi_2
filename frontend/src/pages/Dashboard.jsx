@@ -1,33 +1,33 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import API from '../api';
+import React, { useState, useEffect, useCallback } from 'react'
+import API from '../api'
 
 export default function Dashboard() {
-  const [summary, setSummary] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [summary, setSummary] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   const fetchData = useCallback(async () => {
     try {
       const [sumRes, anaRes] = await Promise.all([
         API.dashboard.getSummary(),
         API.dashboard.getAnalytics(),
-      ]);
-      setSummary(sumRes.data);
-      setAnalytics(anaRes.data);
-      setError('');
-    } catch (err) {
-      setError('Failed to load dashboard data.');
+      ])
+      setSummary(sumRes.data)
+      setAnalytics(anaRes.data)
+      setError('')
+    } catch {
+      setError('Failed to load dashboard data.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+    fetchData()
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
+  }, [fetchData])
 
   if (loading) {
     return (
@@ -35,13 +35,13 @@ export default function Dashboard() {
         <div className="spinner"></div>
         <p>Loading dashboard...</p>
       </div>
-    );
+    )
   }
 
   const maxBarValue = (data) => {
-    if (!data || data.length === 0) return 1;
-    return Math.max(...data.map((d) => d.value || 0), 1);
-  };
+    if (!data || data.length === 0) return 1
+    return Math.max(...data.map((d) => d.value || 0), 1)
+  }
 
   const renderBarChart = (data, title, colorClass) => {
     if (!data || data.length === 0) {
@@ -50,9 +50,9 @@ export default function Dashboard() {
           <div className="chart-title">{title}</div>
           <div className="empty-state"><p>No data available</p></div>
         </div>
-      );
+      )
     }
-    const max = maxBarValue(data);
+    const max = maxBarValue(data)
     return (
       <div className="card chart-container">
         <div className="chart-title">{title}</div>
@@ -69,23 +69,23 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   const shiftData = analytics?.production_by_shift
     ? Object.entries(analytics.production_by_shift).map(([k, v]) => ({ label: `Shift ${k}`, value: v }))
-    : [];
+    : []
 
   const trendData = analytics?.production_trend
     ? analytics.production_trend.map((d) => ({
         label: d.date ? d.date.slice(5) : '',
         value: d.count || d.value || 0,
       }))
-    : [];
+    : []
 
   const inventoryData = analytics?.inventory_by_type
     ? Object.entries(analytics.inventory_by_type).map(([k, v]) => ({ label: k, value: v }))
-    : [];
+    : []
 
   return (
     <div>
@@ -125,5 +125,5 @@ export default function Dashboard() {
         {renderBarChart(inventoryData, 'Inventory by Type', 'orange')}
       </div>
     </div>
-  );
+  )
 }

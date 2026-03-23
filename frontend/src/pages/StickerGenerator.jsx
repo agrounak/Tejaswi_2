@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import API from '../api';
+import React, { useState, useEffect, useCallback } from 'react'
+import API from '../api'
 
 const initialForm = {
   shift: 'A',
@@ -15,63 +15,63 @@ const initialForm = {
   width: '',
   laminated: false,
   machine: '',
-};
+}
 
 export default function StickerGenerator() {
-  const [form, setForm] = useState(initialForm);
-  const [configs, setConfigs] = useState({ quality: [], colour: [], product_type: [], machine: [] });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [createdProduct, setCreatedProduct] = useState(null);
-  const [recentEntries, setRecentEntries] = useState([]);
-  const [loadingRecent, setLoadingRecent] = useState(true);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [form, setForm] = useState(initialForm)
+  const [configs, setConfigs] = useState({ quality: [], colour: [], product_type: [], machine: [] })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [createdProduct, setCreatedProduct] = useState(null)
+  const [recentEntries, setRecentEntries] = useState([])
+  const [loadingRecent, setLoadingRecent] = useState(true)
+  const [previewUrl, setPreviewUrl] = useState(null)
 
   const loadConfigs = useCallback(async () => {
     try {
-      const types = ['quality', 'colour', 'product_type', 'machine'];
-      const results = await Promise.all(types.map((t) => API.config.list(t)));
-      const cfg = {};
+      const types = ['quality', 'colour', 'product_type', 'machine']
+      const results = await Promise.all(types.map((t) => API.config.list(t)))
+      const cfg = {}
       types.forEach((t, i) => {
-        cfg[t] = results[i].data?.configs || results[i].data || [];
-      });
-      setConfigs(cfg);
+        cfg[t] = results[i].data?.configs || results[i].data || []
+      })
+      setConfigs(cfg)
     } catch {
       // configs may not be available yet
     }
-  }, []);
+  }, [])
 
   const loadRecent = useCallback(async () => {
     try {
-      const res = await API.production.getProducts({ limit: 10, sort: 'newest' });
-      setRecentEntries(res.data?.products || res.data || []);
+      const res = await API.production.getProducts({ limit: 10, sort: 'newest' })
+      setRecentEntries(res.data?.products || res.data || [])
     } catch {
       // ignore
     } finally {
-      setLoadingRecent(false);
+      setLoadingRecent(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadConfigs();
-    loadRecent();
-  }, [loadConfigs, loadRecent]);
+    loadConfigs()
+    loadRecent()
+  }, [loadConfigs, loadRecent])
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
+    const { name, value, type, checked } = e.target
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!form.quality || !form.gsm || !form.net_weight || !form.gross_weight) {
-      setError('Please fill in all required fields (quality, GSM, weights).');
-      return;
+      setError('Please fill in all required fields (quality, GSM, weights).')
+      return
     }
-    setLoading(true);
-    setError('');
-    setSuccess('');
+    setLoading(true)
+    setError('')
+    setSuccess('')
     try {
       const res = await API.production.createEntry({
         ...form,
@@ -80,53 +80,52 @@ export default function StickerGenerator() {
         net_weight: Number(form.net_weight),
         length: form.length ? Number(form.length) : undefined,
         width: form.width ? Number(form.width) : undefined,
-      });
-      const product = res.data?.product || res.data;
-      setCreatedProduct(product);
-      setSuccess(`Product created: ${product.product_number || product.id}`);
-      setForm(initialForm);
-      loadRecent();
-      // Load sticker preview
+      })
+      const product = res.data?.product || res.data
+      setCreatedProduct(product)
+      setSuccess(`Product created: ${product.product_number || product.id}`)
+      setForm(initialForm)
+      loadRecent()
       try {
-        const previewRes = await API.sticker.getPreview(product.id || product._id);
-        const url = URL.createObjectURL(previewRes.data);
-        setPreviewUrl(url);
+        const previewRes = await API.sticker.getPreview(product.id || product._id)
+        const url = URL.createObjectURL(previewRes.data)
+        setPreviewUrl(url)
       } catch {
-        setPreviewUrl(null);
+        setPreviewUrl(null)
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create entry.');
+      setError(err.response?.data?.error || 'Failed to create entry.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handlePrint = () => {
-    if (!previewUrl) return;
-    const printWin = window.open('', '_blank');
-    printWin.document.write(`<html><body style="text-align:center;margin:20px;"><img src="${previewUrl}" onload="window.print();window.close();" style="max-width:100%;" /></body></html>`);
-  };
+    if (!previewUrl) return
+    const printWin = window.open('', '_blank')
+    printWin.document.write(`<html><body style="text-align:center;margin:20px;"><img src="${previewUrl}" onload="window.print();window.close();" style="max-width:100%;" /></body></html>`)
+  }
 
   const handleDownload = async () => {
-    if (!createdProduct) return;
-    const id = createdProduct.id || createdProduct._id;
+    if (!createdProduct) return
+    const id = createdProduct.id || createdProduct._id
     try {
-      const res = await API.sticker.download(id);
-      const url = URL.createObjectURL(res.data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `sticker_${createdProduct.product_number || id}.png`;
-      link.click();
-      URL.revokeObjectURL(url);
+      const res = await API.sticker.download(id)
+      const url = URL.createObjectURL(res.data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `sticker_${createdProduct.product_number || id}.png`
+      link.click()
+      URL.revokeObjectURL(url)
     } catch {
-      setError('Failed to download sticker.');
+      setError('Failed to download sticker.')
     }
-  };
+  }
 
   const configValues = (type) => {
-    const list = configs[type] || [];
-    return list.map((c) => (typeof c === 'string' ? c : c.value || c.name || ''));
-  };
+    const list = configs[type] || []
+    return list.map((c) => (typeof c === 'string' ? c : c.value || c.name || ''))
+  }
 
   return (
     <div>
@@ -290,5 +289,5 @@ export default function StickerGenerator() {
         )}
       </div>
     </div>
-  );
+  )
 }
