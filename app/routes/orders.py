@@ -1,104 +1,122 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app import db
-from app.models import Order, OrderItem, Product
+from app.models import Order, OrderItem, Config
+from app.services.parser import parse_order_text, calculate_rolls_and_shafts
 
 orders_bp = Blueprint('orders', __name__)
 
-
-def _generate_order_number():
-    """Generate order number like ORD-YYMMDD-NNN."""
-    today = datetime.now(timezone.utc).date()
-    date_str = today.strftime('%y%m%d')
-    prefix = f"ORD-{date_str}-"
-
-    last = Order.query.filter(
-        Order.order_number.like(f"{prefix}%")
-    ).order_by(Order.order_number.desc()).first()
-
-    if last:
-        try:
-            last_num = int(last.order_number.split('-')[-1])
-            next_num = last_num + 1
-        except (ValueError, IndexError):
-            next_num = 1
-    else:
-        next_num = 1
-
-    return f"{prefix}{str(next_num).zfill(3)}"
+SHAFT_WIDTH_MM = 3200
 
 
-@orders_bp.route('/', methods=['POST'])
+@orders_bp.route('', methods=['POST'])
 @jwt_required()
 def create_order():
-    """Create a new order with items."""
+    """Create an order from structured data or parse from raw text."""
     try:
         data = request.get_json()
-        client_name = data.get('client_name')
-
-        if not client_name:
-            return jsonify({'error': 'client_name is required'}), 400
-
-        order_date_str = data.get('order_date')
-        order_date = (
-            datetime.strptime(order_date_str, '%Y-%m-%d').date()
-            if order_date_str
-            else datetime.now(timezone.utc).date()
-        )
-
-        required_date_str = data.get('required_date')
-        required_date = (
-            datetime.strptime(required_date_str, '%Y-%m-%d').date()
-            if required_date_str
-            else None
-        )
+        customer_name = data.get('customer_name')
+        if not customer_name:
+            return jsonify({'error': 'Customer name is required'}), 400
 
         order = Order(
-            order_number=_generate_order_number(),
-            client_name=client_name,
-            client_phone=data.get('client_phone'),
-            client_address=data.get('client_address'),
-            order_date=order_date,
-            required_date=required_date,
-            status='Pending',
+            customer_name=customer_name,
+            due_date=datetime.strptime(data['due_date'], '%Y-%m-%d').date() if data.get('due_date') else None,
             notes=data.get('notes'),
+            raw_text=data.get('raw_text'),
+            status='Pending',
         )
 
-        db.session.add(order)
-        db.session.flush()  # get order.id
-
+        # If raw_text provided, parse it
+        raw_text = data.get('raw_text')
         items_data = data.get('items', [])
+
+        if raw_text and not items_data:
+            items_data = parse_order_text(raw_text)
+
         for item_data in items_data:
-            item = OrderItem(
-                order_id=order.id,
-                product_type=item_data.get('product_type'),
-                gsm=item_data.get('gsm'),
-                colour=item_data.get('colour'),
-                width=item_data.get('width'),
-                quantity_kg=item_data.get('quantity_kg', 0),
-                allocated_kg=0,
+            width_inches = item_data.get('width_inches', 0)
+            width_mm = item_data.get('width_mm', round(width_inches * 25.4, 1))
+            weight_kg = item_data.get('weight_kg', 0)
+            gsm = item_data.get('gsm')
+
+            if not width_inches and width_mm:
+                width_inches = round(width_mm / 25.4, 1)
+            if not width_mm and width_inches:
+                width_mm = round(width_inches * 25.4, 1)
+
+            calc = calculate_rolls_and_shafts(width_mm, weight_kg, gsm, SHAFT_WIDTH_MM)
+
+            order_item = OrderItem(
+                width_inches=width_inches,
+                width_mm=width_mm,
+                weight_kg=weight_kg,
+                gsm=gsm,
+                color=item_data.get('color', 'White'),
+                quality_code=item_data.get('quality_code'),
+                rolls_needed=calc['rolls_needed'],
+                rolls_per_shaft=calc['rolls_per_shaft'],
+                shafts_needed=calc['shafts_needed'],
             )
-            db.session.add(item)
+            order.items.append(order_item)
 
+        db.session.add(order)
         db.session.commit()
-
-        return jsonify({
-            'message': 'Order created',
-            'order': order.to_dict()
-        }), 201
+        return jsonify({'order': order.to_dict()}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 
-@orders_bp.route('/', methods=['GET'])
+@orders_bp.route('/parse', methods=['POST'])
+@jwt_required()
+def parse_text():
+    """Parse raw order text and return structured items (preview, no save)."""
+    try:
+        data = request.get_json()
+        raw_text = data.get('raw_text', '')
+        items = parse_order_text(raw_text)
+
+        # Add roll calculations
+        for item in items:
+            width_mm = item.get('width_mm', 0)
+            weight_kg = item.get('weight_kg', 0)
+            gsm = item.get('gsm')
+            calc = calculate_rolls_and_shafts(width_mm, weight_kg, gsm, SHAFT_WIDTH_MM)
+            item.update(calc)
+
+        return jsonify({'items': items, 'count': len(items)}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@orders_bp.route('', methods=['GET'])
 @jwt_required()
 def list_orders():
-    """List all orders."""
+    """List orders with optional filters."""
     try:
-        orders = Order.query.order_by(Order.created_at.desc()).all()
-        return jsonify({'orders': [o.to_dict() for o in orders]}), 200
+        status = request.args.get('status')
+        customer = request.args.get('customer')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 25, type=int)
+
+        query = Order.query
+
+        if status:
+            query = query.filter(Order.status == status)
+        if customer:
+            query = query.filter(Order.customer_name.ilike(f'%{customer}%'))
+
+        query = query.order_by(Order.created_at.desc())
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        return jsonify({
+            'orders': [o.to_dict() for o in pagination.items],
+            'total': pagination.total,
+            'page': pagination.page,
+            'pages': pagination.pages,
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -106,7 +124,6 @@ def list_orders():
 @orders_bp.route('/<int:order_id>', methods=['GET'])
 @jwt_required()
 def get_order(order_id):
-    """Get order details with items."""
     try:
         order = Order.query.get_or_404(order_id)
         return jsonify({'order': order.to_dict()}), 200
@@ -117,107 +134,75 @@ def get_order(order_id):
 @orders_bp.route('/<int:order_id>', methods=['PUT'])
 @jwt_required()
 def update_order(order_id):
-    """Update an order."""
     try:
         order = Order.query.get_or_404(order_id)
         data = request.get_json()
 
-        if 'client_name' in data:
-            order.client_name = data['client_name']
-        if 'client_phone' in data:
-            order.client_phone = data['client_phone']
-        if 'client_address' in data:
-            order.client_address = data['client_address']
-        if 'status' in data:
-            order.status = data['status']
+        if 'customer_name' in data:
+            order.customer_name = data['customer_name']
+        if 'due_date' in data:
+            order.due_date = datetime.strptime(data['due_date'], '%Y-%m-%d').date() if data['due_date'] else None
         if 'notes' in data:
             order.notes = data['notes']
-        if 'required_date' in data and data['required_date']:
-            order.required_date = datetime.strptime(data['required_date'], '%Y-%m-%d').date()
+        if 'status' in data:
+            order.status = data['status']
 
         # Update items if provided
         if 'items' in data:
-            # Remove existing items and re-create
+            # Remove old items
             OrderItem.query.filter_by(order_id=order.id).delete()
             for item_data in data['items']:
-                item = OrderItem(
-                    order_id=order.id,
-                    product_type=item_data.get('product_type'),
-                    gsm=item_data.get('gsm'),
-                    colour=item_data.get('colour'),
-                    width=item_data.get('width'),
-                    quantity_kg=item_data.get('quantity_kg', 0),
-                    allocated_kg=item_data.get('allocated_kg', 0),
-                )
-                db.session.add(item)
+                width_inches = item_data.get('width_inches', 0)
+                width_mm = item_data.get('width_mm', round(width_inches * 25.4, 1))
+                weight_kg = item_data.get('weight_kg', 0)
+                gsm = item_data.get('gsm')
+
+                if not width_inches and width_mm:
+                    width_inches = round(width_mm / 25.4, 1)
+                if not width_mm and width_inches:
+                    width_mm = round(width_inches * 25.4, 1)
+
+                calc = calculate_rolls_and_shafts(width_mm, weight_kg, gsm, SHAFT_WIDTH_MM)
+                order.items.append(OrderItem(
+                    width_inches=width_inches,
+                    width_mm=width_mm,
+                    weight_kg=weight_kg,
+                    gsm=gsm,
+                    color=item_data.get('color', 'White'),
+                    quality_code=item_data.get('quality_code'),
+                    rolls_needed=calc['rolls_needed'],
+                    rolls_per_shaft=calc['rolls_per_shaft'],
+                    shafts_needed=calc['shafts_needed'],
+                ))
 
         db.session.commit()
-        return jsonify({
-            'message': 'Order updated',
-            'order': order.to_dict()
-        }), 200
+        return jsonify({'order': order.to_dict()}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 
-@orders_bp.route('/<int:order_id>/allocate', methods=['POST'])
+@orders_bp.route('/<int:order_id>', methods=['DELETE'])
 @jwt_required()
-def allocate_inventory(order_id):
-    """Allocate inventory to order items by finding matching products."""
+def delete_order(order_id):
     try:
         order = Order.query.get_or_404(order_id)
-        allocated_products = []
-
-        for item in order.items:
-            remaining = item.quantity_kg - item.allocated_kg
-            if remaining <= 0:
-                continue
-
-            # Find matching products in stock
-            query = Product.query.filter(
-                Product.status.in_(['In Warehouse', 'Sticker Printed'])
-            )
-
-            if item.product_type:
-                query = query.filter(Product.product_type == item.product_type)
-            if item.gsm:
-                query = query.filter(Product.gsm == item.gsm)
-            if item.colour:
-                query = query.filter(Product.colour == item.colour)
-            if item.width:
-                query = query.filter(Product.width == item.width)
-
-            matching_products = query.order_by(Product.created_at.asc()).all()
-
-            for product in matching_products:
-                if remaining <= 0:
-                    break
-
-                product_weight = product.net_weight or 0
-                if product_weight <= 0:
-                    continue
-
-                item.allocated_kg += product_weight
-                remaining -= product_weight
-                allocated_products.append(product.product_number)
-
+        db.session.delete(order)
         db.session.commit()
-
-        if order.items and all(
-            item.allocated_kg >= item.quantity_kg for item in order.items
-        ):
-            order.status = 'Fulfilled'
-            db.session.commit()
-        elif any(item.allocated_kg > 0 for item in order.items):
-            order.status = 'Partially Fulfilled'
-            db.session.commit()
-
-        return jsonify({
-            'message': 'Allocation complete',
-            'order': order.to_dict(),
-            'allocated_products': allocated_products,
-        }), 200
+        return jsonify({'message': 'Order deleted'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+@orders_bp.route('/config', methods=['GET'])
+@jwt_required()
+def get_configs():
+    """Get config values grouped by type."""
+    configs = Config.query.all()
+    grouped = {}
+    for c in configs:
+        if c.config_type not in grouped:
+            grouped[c.config_type] = []
+        grouped[c.config_type].append(c.to_dict())
+    return jsonify(grouped), 200

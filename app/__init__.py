@@ -1,4 +1,3 @@
-import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
@@ -18,36 +17,47 @@ def create_app(config_name='default'):
     jwt.init_app(app)
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    os.makedirs(app.config.get('STICKER_DIR', 'stickers'), exist_ok=True)
-
     from app.routes.auth import auth_bp
-    from app.routes.production import production_bp
-    from app.routes.sticker import sticker_bp
-    from app.routes.inventory import inventory_bp
-    from app.routes.dispatch import dispatch_bp
     from app.routes.orders import orders_bp
+    from app.routes.planning import planning_bp
+    from app.routes.schedule import schedule_bp
     from app.routes.dashboard import dashboard_bp
-    from app.routes.config_routes import config_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(production_bp, url_prefix='/api/production')
-    app.register_blueprint(sticker_bp, url_prefix='/api/sticker')
-    app.register_blueprint(inventory_bp, url_prefix='/api/inventory')
-    app.register_blueprint(dispatch_bp, url_prefix='/api/dispatch')
     app.register_blueprint(orders_bp, url_prefix='/api/orders')
+    app.register_blueprint(planning_bp, url_prefix='/api/planning')
+    app.register_blueprint(schedule_bp, url_prefix='/api/schedule')
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
-    app.register_blueprint(config_bp, url_prefix='/api/config')
 
     with app.app_context():
         from app import models  # noqa: F401
         db.create_all()
 
-        # Create default admin user if none exists
+        # Create default admin user
         from app.models import User
         if not User.query.filter_by(role='Admin').first():
             admin = User(username='admin', role='Admin')
             admin.set_password('admin123')
             db.session.add(admin)
+            db.session.commit()
+
+        # Seed default colors and quality codes
+        from app.models import Config
+        if not Config.query.first():
+            defaults = [
+                ('color', 'White'), ('color', 'Ivory'), ('color', 'Lemon Yellow'),
+                ('color', 'Golden Yellow'), ('color', 'Red'), ('color', 'Blue'),
+                ('color', 'Green'), ('color', 'Black'), ('color', 'Pink'),
+                ('color', 'Orange'), ('color', 'Grey'),
+                ('quality', 'Dcut'), ('quality', 'W-Cut'), ('quality', 'U-Cut'),
+                ('quality', 'Box Bag'), ('quality', 'Loop Handle'),
+                ('gsm', '10'), ('gsm', '12'), ('gsm', '14'), ('gsm', '16'),
+                ('gsm', '18'), ('gsm', '20'), ('gsm', '25'), ('gsm', '30'),
+                ('gsm', '35'), ('gsm', '40'), ('gsm', '50'), ('gsm', '60'),
+                ('gsm', '70'), ('gsm', '80'), ('gsm', '90'), ('gsm', '100'),
+            ]
+            for config_type, value in defaults:
+                db.session.add(Config(config_type=config_type, value=value))
             db.session.commit()
 
     return app

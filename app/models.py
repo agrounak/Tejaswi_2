@@ -9,7 +9,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='Sticker User')
+    role = db.Column(db.String(20), nullable=False, default='Operator')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def set_password(self, password):
@@ -27,125 +27,16 @@ class User(db.Model):
         }
 
 
-class Product(db.Model):
-    __tablename__ = 'products'
-
-    id = db.Column(db.Integer, primary_key=True)
-    product_number = db.Column(db.String(50), unique=True, nullable=False)
-    trading_name = db.Column(db.String(200))
-    shift = db.Column(db.String(10), nullable=False)
-    production_date = db.Column(db.Date, nullable=False)
-    serial_no = db.Column(db.Integer, nullable=False)
-    quality = db.Column(db.String(50))
-    gsm = db.Column(db.Float)
-    colour = db.Column(db.String(50))
-    product_type = db.Column(db.String(50))
-    gross_weight = db.Column(db.Float)
-    net_weight = db.Column(db.Float)
-    length = db.Column(db.Float)
-    width = db.Column(db.Float)
-    laminated = db.Column(db.Boolean, default=False)
-    machine = db.Column(db.String(50))
-    location = db.Column(db.String(100))
-    status = db.Column(db.String(30), default='Manufactured')
-    dispatch_id = db.Column(db.Integer, db.ForeignKey('dispatches.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'product_number': self.product_number,
-            'trading_name': self.trading_name,
-            'shift': self.shift,
-            'production_date': self.production_date.isoformat() if self.production_date else None,
-            'serial_no': self.serial_no,
-            'quality': self.quality,
-            'gsm': self.gsm,
-            'colour': self.colour,
-            'product_type': self.product_type,
-            'gross_weight': self.gross_weight,
-            'net_weight': self.net_weight,
-            'length': self.length,
-            'width': self.width,
-            'laminated': self.laminated,
-            'machine': self.machine,
-            'location': self.location,
-            'status': self.status,
-            'dispatch_id': self.dispatch_id,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-        }
-
-
-class Dispatch(db.Model):
-    __tablename__ = 'dispatches'
-
-    id = db.Column(db.Integer, primary_key=True)
-    dispatch_number = db.Column(db.String(50), unique=True, nullable=False)
-    client_name = db.Column(db.String(200), nullable=False)
-    vehicle_number = db.Column(db.String(50))
-    driver_name = db.Column(db.String(100))
-    driver_phone = db.Column(db.String(20))
-    dispatch_date = db.Column(db.Date)
-    status = db.Column(db.String(30), default='In Progress')
-    total_items = db.Column(db.Integer, default=0)
-    total_weight = db.Column(db.Float, default=0.0)
-    created_by = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-
-    items = db.relationship('DispatchItem', backref='dispatch', lazy=True, cascade='all, delete-orphan')
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'dispatch_number': self.dispatch_number,
-            'client_name': self.client_name,
-            'vehicle_number': self.vehicle_number,
-            'driver_name': self.driver_name,
-            'driver_phone': self.driver_phone,
-            'dispatch_date': self.dispatch_date.isoformat() if self.dispatch_date else None,
-            'status': self.status,
-            'total_items': self.total_items,
-            'total_weight': self.total_weight,
-            'created_by': self.created_by,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'items': [item.to_dict() for item in self.items],
-        }
-
-
-class DispatchItem(db.Model):
-    __tablename__ = 'dispatch_items'
-
-    id = db.Column(db.Integer, primary_key=True)
-    dispatch_id = db.Column(db.Integer, db.ForeignKey('dispatches.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    weight = db.Column(db.Float)
-    scanned_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-
-    product = db.relationship('Product', backref='dispatch_items')
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'dispatch_id': self.dispatch_id,
-            'product_id': self.product_id,
-            'weight': self.weight,
-            'scanned_at': self.scanned_at.isoformat() if self.scanned_at else None,
-            'product': self.product.to_dict() if self.product else None,
-        }
-
-
 class Order(db.Model):
     __tablename__ = 'orders'
 
     id = db.Column(db.Integer, primary_key=True)
-    order_number = db.Column(db.String(50), unique=True, nullable=False)
-    client_name = db.Column(db.String(200), nullable=False)
-    client_phone = db.Column(db.String(20))
-    client_address = db.Column(db.Text)
-    order_date = db.Column(db.Date)
-    required_date = db.Column(db.Date)
-    status = db.Column(db.String(30), default='Pending')
-    notes = db.Column(db.Text)
+    customer_name = db.Column(db.String(200), nullable=False)
+    order_date = db.Column(db.Date, default=lambda: datetime.now(timezone.utc).date())
+    due_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(30), default='Pending')  # Pending, Planned, In Progress, Completed
+    notes = db.Column(db.Text, nullable=True)
+    raw_text = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
@@ -153,16 +44,16 @@ class Order(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'order_number': self.order_number,
-            'client_name': self.client_name,
-            'client_phone': self.client_phone,
-            'client_address': self.client_address,
+            'customer_name': self.customer_name,
             'order_date': self.order_date.isoformat() if self.order_date else None,
-            'required_date': self.required_date.isoformat() if self.required_date else None,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
             'status': self.status,
             'notes': self.notes,
+            'raw_text': self.raw_text,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'items': [item.to_dict() for item in self.items],
+            'total_weight': sum(item.weight_kg or 0 for item in self.items),
+            'item_count': len(self.items),
         }
 
 
@@ -171,23 +62,92 @@ class OrderItem(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
-    product_type = db.Column(db.String(50))
-    gsm = db.Column(db.Float)
-    colour = db.Column(db.String(50))
-    width = db.Column(db.Float)
-    quantity_kg = db.Column(db.Float)
-    allocated_kg = db.Column(db.Float, default=0)
+    width_inches = db.Column(db.Float, nullable=False)
+    width_mm = db.Column(db.Float, nullable=False)
+    weight_kg = db.Column(db.Float, nullable=False)
+    gsm = db.Column(db.Float, nullable=True)
+    color = db.Column(db.String(50), default='White')
+    quality_code = db.Column(db.String(50), nullable=True)
+    rolls_needed = db.Column(db.Integer, default=0)
+    rolls_per_shaft = db.Column(db.Integer, default=0)
+    shafts_needed = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(30), default='Pending')  # Pending, Planned, Produced, Delivered
+
+    run_items = db.relationship('RunItem', backref='order_item', lazy=True)
 
     def to_dict(self):
+        produced = sum(ri.rolls_count for ri in self.run_items)
         return {
             'id': self.id,
             'order_id': self.order_id,
-            'product_type': self.product_type,
+            'width_inches': self.width_inches,
+            'width_mm': self.width_mm,
+            'weight_kg': self.weight_kg,
             'gsm': self.gsm,
-            'colour': self.colour,
-            'width': self.width,
-            'quantity_kg': self.quantity_kg,
-            'allocated_kg': self.allocated_kg,
+            'color': self.color,
+            'quality_code': self.quality_code,
+            'rolls_needed': self.rolls_needed,
+            'rolls_per_shaft': self.rolls_per_shaft,
+            'shafts_needed': self.shafts_needed,
+            'status': self.status,
+            'rolls_produced': produced,
+        }
+
+
+class ProductionRun(db.Model):
+    __tablename__ = 'production_runs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    run_date = db.Column(db.Date, nullable=False)
+    shaft_number = db.Column(db.Integer, default=1)
+    status = db.Column(db.String(30), default='Planned')  # Planned, In Progress, Completed
+    total_width_used_mm = db.Column(db.Float, default=0)
+    trim_loss_mm = db.Column(db.Float, default=0)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    run_items = db.relationship('RunItem', backref='production_run', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        shaft_width = 3200
+        return {
+            'id': self.id,
+            'run_date': self.run_date.isoformat() if self.run_date else None,
+            'shaft_number': self.shaft_number,
+            'status': self.status,
+            'total_width_used_mm': self.total_width_used_mm,
+            'trim_loss_mm': self.trim_loss_mm,
+            'utilization_pct': round((self.total_width_used_mm / shaft_width) * 100, 1) if self.total_width_used_mm else 0,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'items': [item.to_dict() for item in self.run_items],
+        }
+
+
+class RunItem(db.Model):
+    __tablename__ = 'run_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    production_run_id = db.Column(db.Integer, db.ForeignKey('production_runs.id'), nullable=False)
+    order_item_id = db.Column(db.Integer, db.ForeignKey('order_items.id'), nullable=False)
+    rolls_count = db.Column(db.Integer, default=1)
+    width_mm = db.Column(db.Float, nullable=False)
+    color = db.Column(db.String(50), default='White')
+    customer_name = db.Column(db.String(200), nullable=True)
+
+    def to_dict(self):
+        oi = self.order_item
+        return {
+            'id': self.id,
+            'production_run_id': self.production_run_id,
+            'order_item_id': self.order_item_id,
+            'rolls_count': self.rolls_count,
+            'width_mm': self.width_mm,
+            'width_inches': round(self.width_mm / 25.4, 1),
+            'color': self.color,
+            'customer_name': self.customer_name or (oi.order.customer_name if oi and oi.order else ''),
+            'gsm': oi.gsm if oi else None,
+            'quality_code': oi.quality_code if oi else None,
         }
 
 
@@ -197,14 +157,10 @@ class Config(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     config_type = db.Column(db.String(50), nullable=False)
     value = db.Column(db.String(200), nullable=False)
-    is_white = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
             'id': self.id,
             'config_type': self.config_type,
             'value': self.value,
-            'is_white': self.is_white,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
         }
