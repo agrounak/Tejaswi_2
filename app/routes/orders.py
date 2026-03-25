@@ -7,7 +7,7 @@ from app.services.parser import parse_order_text, calculate_rolls_and_shafts
 
 orders_bp = Blueprint('orders', __name__)
 
-SHAFT_WIDTH_MM = 3200
+SHAFT_WIDTH_MM = 3124.2  # 123 inches
 
 
 @orders_bp.route('', methods=['POST'])
@@ -40,6 +40,7 @@ def create_order():
             width_mm = item_data.get('width_mm', round(width_inches * 25.4, 1))
             weight_kg = item_data.get('weight_kg', 0)
             gsm = item_data.get('gsm')
+            manual_rolls = item_data.get('rolls_count', 0)
 
             if not width_inches and width_mm:
                 width_inches = round(width_mm / 25.4, 1)
@@ -47,6 +48,13 @@ def create_order():
                 width_mm = round(width_inches * 25.4, 1)
 
             calc = calculate_rolls_and_shafts(width_mm, weight_kg, gsm, SHAFT_WIDTH_MM)
+
+            # If rolls_count specified manually, override the calculated value
+            if manual_rolls and manual_rolls > 0:
+                calc['rolls_needed'] = manual_rolls
+                if calc['rolls_per_shaft'] > 0:
+                    import math
+                    calc['shafts_needed'] = math.ceil(manual_rolls / calc['rolls_per_shaft'])
 
             order_item = OrderItem(
                 width_inches=width_inches,
@@ -156,6 +164,7 @@ def update_order(order_id):
                 width_mm = item_data.get('width_mm', round(width_inches * 25.4, 1))
                 weight_kg = item_data.get('weight_kg', 0)
                 gsm = item_data.get('gsm')
+                manual_rolls = item_data.get('rolls_count', 0)
 
                 if not width_inches and width_mm:
                     width_inches = round(width_mm / 25.4, 1)
@@ -163,6 +172,13 @@ def update_order(order_id):
                     width_mm = round(width_inches * 25.4, 1)
 
                 calc = calculate_rolls_and_shafts(width_mm, weight_kg, gsm, SHAFT_WIDTH_MM)
+
+                if manual_rolls and manual_rolls > 0:
+                    calc['rolls_needed'] = manual_rolls
+                    if calc['rolls_per_shaft'] > 0:
+                        import math
+                        calc['shafts_needed'] = math.ceil(manual_rolls / calc['rolls_per_shaft'])
+
                 order.items.append(OrderItem(
                     width_inches=width_inches,
                     width_mm=width_mm,
@@ -206,3 +222,41 @@ def get_configs():
             grouped[c.config_type] = []
         grouped[c.config_type].append(c.to_dict())
     return jsonify(grouped), 200
+
+
+@orders_bp.route('/config', methods=['POST'])
+@jwt_required()
+def add_config():
+    """Add a new config value (color, quality, gsm)."""
+    try:
+        data = request.get_json()
+        config_type = data.get('config_type')
+        value = data.get('value', '').strip()
+        if not config_type or not value:
+            return jsonify({'error': 'config_type and value are required'}), 400
+        if config_type not in ('color', 'quality', 'gsm'):
+            return jsonify({'error': 'Invalid config_type'}), 400
+        existing = Config.query.filter_by(config_type=config_type, value=value).first()
+        if existing:
+            return jsonify({'error': f'{value} already exists in {config_type}'}), 409
+        cfg = Config(config_type=config_type, value=value)
+        db.session.add(cfg)
+        db.session.commit()
+        return jsonify(cfg.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@orders_bp.route('/config/<int:config_id>', methods=['DELETE'])
+@jwt_required()
+def delete_config(config_id):
+    """Delete a config value."""
+    try:
+        cfg = Config.query.get_or_404(config_id)
+        db.session.delete(cfg)
+        db.session.commit()
+        return jsonify({'message': 'Config deleted'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

@@ -32,7 +32,7 @@ def get_summary():
         # Average utilization
         avg_util = db.session.query(
             db.func.avg(
-                ProductionRun.total_width_used_mm / 3200 * 100
+                ProductionRun.total_width_used_mm / 3124.2 * 100
             )
         ).filter(ProductionRun.total_width_used_mm > 0).scalar()
 
@@ -98,7 +98,7 @@ def get_analytics():
         runs = ProductionRun.query.filter(ProductionRun.total_width_used_mm > 0).all()
         util_ranges = {'0-50%': 0, '50-75%': 0, '75-90%': 0, '90-100%': 0}
         for run in runs:
-            pct = (run.total_width_used_mm / 3200) * 100
+            pct = (run.total_width_used_mm / 3124.2) * 100
             if pct < 50:
                 util_ranges['0-50%'] += 1
             elif pct < 75:

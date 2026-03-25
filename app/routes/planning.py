@@ -16,7 +16,7 @@ def preview_plan():
         data = request.get_json()
         order_ids = data.get('order_ids', [])
         group_by_color = data.get('group_by_color', False)
-        shaft_width = current_app.config.get('SHAFT_WIDTH_MM', 3200)
+        shaft_width = current_app.config.get('SHAFT_WIDTH_MM', 3124.2)
 
         if not order_ids:
             # Plan all pending orders
@@ -70,7 +70,7 @@ def generate_plan():
         group_by_color = data.get('group_by_color', False)
         start_date = data.get('start_date')
         max_per_day = data.get('max_shafts_per_day', 10)
-        shaft_width = current_app.config.get('SHAFT_WIDTH_MM', 3200)
+        shaft_width = current_app.config.get('SHAFT_WIDTH_MM', 3124.2)
 
         if not order_ids:
             orders = Order.query.filter(Order.status.in_(['Pending', 'In Progress'])).all()

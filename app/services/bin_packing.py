@@ -1,11 +1,11 @@
 """
-Bin-packing algorithm for fitting rolls onto 3.2m shafts.
+Bin-packing algorithm for fitting rolls onto 123-inch (3124.2mm) shafts.
 Uses First-Fit Decreasing heuristic to minimize trim loss.
 """
 import math
 
 
-def pack_rolls_into_shafts(roll_requests, shaft_width_mm=3200):
+def pack_rolls_into_shafts(roll_requests, shaft_width_mm=3124.2):
     """Pack roll requests into shafts using First-Fit Decreasing.
 
     Args:
@@ -103,7 +103,7 @@ def pack_rolls_into_shafts(roll_requests, shaft_width_mm=3200):
     return result
 
 
-def optimize_by_color_grouping(roll_requests, shaft_width_mm=3200):
+def optimize_by_color_grouping(roll_requests, shaft_width_mm=3124.2):
     """Pack rolls grouped by color first to minimize color changes.
 
     Groups rolls by color, then applies bin-packing within each group.

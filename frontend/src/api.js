@@ -62,6 +62,10 @@ export const ordersAPI = {
     api.delete(`/orders/${id}`),
   getConfigs: () =>
     api.get('/orders/configs'),
+  addConfig: (data) =>
+    api.post('/orders/config', data),
+  deleteConfig: (id) =>
+    api.delete(`/orders/config/${id}`),
 };
 
 // ── Planning ──────────────────────────────────────────

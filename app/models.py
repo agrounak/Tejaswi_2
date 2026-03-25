@@ -109,7 +109,7 @@ class ProductionRun(db.Model):
     run_items = db.relationship('RunItem', backref='production_run', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
-        shaft_width = 3200
+        shaft_width = 3124.2  # 123 inches
         return {
             'id': self.id,
             'run_date': self.run_date.isoformat() if self.run_date else None,

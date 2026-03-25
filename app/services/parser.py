@@ -172,7 +172,7 @@ def _extract_quality(text):
     return None
 
 
-def calculate_rolls_and_shafts(width_mm, weight_kg, gsm=None, shaft_width_mm=3200):
+def calculate_rolls_and_shafts(width_mm, weight_kg, gsm=None, shaft_width_mm=3124.2):
     """Calculate rolls needed and shaft usage for an order item.
 
     Args:

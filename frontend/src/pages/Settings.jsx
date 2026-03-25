@@ -2,6 +2,51 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
+function ConfigSection({ title, configType, configs, onAdd, onDelete }) {
+  const [newValue, setNewValue] = useState('');
+  const items = configs[configType] || [];
+
+  const handleAdd = async () => {
+    if (!newValue.trim()) return;
+    await onAdd(configType, newValue.trim());
+    setNewValue('');
+  };
+
+  return (
+    <div className="card" style={{ marginTop: '16px' }}>
+      <div className="card-header"><h3>{title}</h3></div>
+      <div style={{ padding: '16px' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <input
+            type="text"
+            value={newValue}
+            onChange={e => setNewValue(e.target.value)}
+            placeholder={`Add new ${configType}...`}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            style={{ flex: 1 }}
+          />
+          <button className="btn btn-primary btn-sm" onClick={handleAdd} type="button">Add</button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {items.map(item => (
+            <span key={item.id} className="badge badge-blue" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: 14 }}>
+              {item.value}
+              <button
+                onClick={() => onDelete(item.id)}
+                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, fontSize: 16, lineHeight: 1, opacity: 0.7 }}
+                title="Remove"
+              >
+                x
+              </button>
+            </span>
+          ))}
+          {items.length === 0 && <span style={{ color: '#888' }}>No {configType} values configured.</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
@@ -12,6 +57,7 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('Operator');
   const [creating, setCreating] = useState(false);
+  const [configs, setConfigs] = useState({});
 
   const loadUsers = useCallback(async () => {
     try {
@@ -21,7 +67,34 @@ export default function Settings() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { loadUsers(); }, [loadUsers]);
+  const loadConfigs = useCallback(async () => {
+    try {
+      const res = await API.orders.getConfigs();
+      setConfigs(res.data || {});
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadUsers(); loadConfigs(); }, [loadUsers, loadConfigs]);
+
+  const handleAddConfig = async (configType, value) => {
+    setError(''); setSuccess('');
+    try {
+      await API.orders.addConfig({ config_type: configType, value });
+      setSuccess(`Added "${value}" to ${configType}.`);
+      loadConfigs();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add config.');
+    }
+  };
+
+  const handleDeleteConfig = async (id) => {
+    setError(''); setSuccess('');
+    try {
+      await API.orders.deleteConfig(id);
+      setSuccess('Config removed.');
+      loadConfigs();
+    } catch { setError('Failed to delete config.'); }
+  };
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -57,10 +130,15 @@ export default function Settings() {
 
   return (
     <div>
-      <div className="page-header"><h1>Settings</h1><p>User management</p></div>
+      <div className="page-header"><h1>Settings</h1><p>User management & configuration</p></div>
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
-      <div className="card">
+
+      <ConfigSection title="Quality Options" configType="quality" configs={configs} onAdd={handleAddConfig} onDelete={handleDeleteConfig} />
+      <ConfigSection title="Color Options" configType="color" configs={configs} onAdd={handleAddConfig} onDelete={handleDeleteConfig} />
+      <ConfigSection title="GSM Options" configType="gsm" configs={configs} onAdd={handleAddConfig} onDelete={handleDeleteConfig} />
+
+      <div className="card" style={{ marginTop: '16px' }}>
         <div className="card-header"><h3>Create User</h3></div>
         <div style={{ padding: '16px' }}>
           <form onSubmit={handleCreateUser}>
@@ -108,6 +186,13 @@ export default function Settings() {
             </table>
           </div>
         )}
+      </div>
+
+      <div className="card" style={{ marginTop: '16px', marginBottom: '16px' }}>
+        <div className="card-header"><h3>Machine Info</h3></div>
+        <div style={{ padding: '16px' }}>
+          <p><strong>Total Shaft Size:</strong> 123 inches (3124.2 mm)</p>
+        </div>
       </div>
     </div>
   );

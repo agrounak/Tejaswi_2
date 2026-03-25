@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 
-const emptyItem = { width_inches: '', weight_kg: '', gsm: '', color: '', quality_code: '' };
+const emptyItem = { width_inches: '', weight_kg: '', gsm: '', color: '', quality_code: '', rolls_count: '' };
 
 export default function Orders() {
   const navigate = useNavigate();
@@ -132,6 +132,7 @@ export default function Orders() {
           gsm: parseFloat(item.gsm) || 0,
           color: item.color,
           quality_code: item.quality_code,
+          rolls_count: parseInt(item.rolls_count) || 0,
         })),
       };
       await API.orders.create(payload);
@@ -181,11 +182,12 @@ export default function Orders() {
         <table>
           <thead>
             <tr>
+              <th>Rolls (pcs)</th>
               <th>Width (inches)</th>
               <th>Weight (kg)</th>
               <th>GSM</th>
               <th>Color</th>
-              <th>Quality Code</th>
+              <th>Quality</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -195,9 +197,21 @@ export default function Orders() {
                 <td>
                   <input
                     type="number"
+                    value={item.rolls_count}
+                    onChange={(e) => changeHandler(i, 'rolls_count', e.target.value)}
+                    min="1"
+                    step="1"
+                    placeholder="e.g. 30"
+                    style={{ width: 80 }}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
                     value={item.width_inches}
                     onChange={(e) => changeHandler(i, 'width_inches', e.target.value)}
                     step="0.1"
+                    placeholder="e.g. 44"
                     style={{ width: 80 }}
                   />
                 </td>
@@ -207,6 +221,7 @@ export default function Orders() {
                     value={item.weight_kg}
                     onChange={(e) => changeHandler(i, 'weight_kg', e.target.value)}
                     step="0.1"
+                    placeholder="optional"
                     style={{ width: 80 }}
                   />
                 </td>
